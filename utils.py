@@ -217,20 +217,25 @@ def load_image(image_path: str) -> Tuple[np.array, torch.Tensor]:
     return image, image_transformed
 
 
+# utils.py
+
 def annotate(image_source: np.ndarray, boxes: torch.Tensor, logits: torch.Tensor, phrases: List[str], text_scale: float, 
-             text_padding=5, text_thickness=2, thickness=3) -> np.ndarray:
+             text_padding=5, text_thickness=2, thickness=3) -> Tuple[np.ndarray, List[List[float]]]:
     """    
     This function annotates an image with bounding boxes and labels.
 
     Parameters:
     image_source (np.ndarray): The source image to be annotated.
-    boxes (torch.Tensor): A tensor containing bounding box coordinates. in cxcywh format, pixel scale
+    boxes (torch.Tensor): A tensor containing bounding box coordinates in cxcywh format, pixel scale.
     logits (torch.Tensor): A tensor containing confidence scores for each bounding box.
     phrases (List[str]): A list of labels for each bounding box.
-    text_scale (float): The scale of the text to be displayed. 0.8 for mobile/web, 0.3 for desktop # 0.4 for mind2web
+    text_scale (float): The scale of the text to be displayed.
+    text_padding (int): Padding around the text.
+    text_thickness (int): Thickness of the text.
+    thickness (int): Thickness of the bounding box lines.
 
     Returns:
-    np.ndarray: The annotated image.
+    Tuple[np.ndarray, List[List[float]]]: The annotated image and a list of label coordinates.
     """
     h, w, _ = image_source.shape
     boxes = boxes * torch.Tensor([w, h, w, h])
@@ -241,11 +246,13 @@ def annotate(image_source: np.ndarray, boxes: torch.Tensor, logits: torch.Tensor
     labels = [f"{phrase}" for phrase in range(boxes.shape[0])]
 
     from util.box_annotator import BoxAnnotator 
-    box_annotator = BoxAnnotator(text_scale=text_scale, text_padding=text_padding,text_thickness=text_thickness,thickness=thickness) # 0.8 for mobile/web, 0.3 for desktop # 0.4 for mind2web
+    box_annotator = BoxAnnotator(text_scale=text_scale, text_padding=text_padding, 
+                                 text_thickness=text_thickness, thickness=thickness)
     annotated_frame = image_source.copy()
     annotated_frame = box_annotator.annotate(scene=annotated_frame, detections=detections, labels=labels, image_size=(w,h))
 
-    label_coordinates = {f"{phrase}": v for phrase, v in zip(phrases, xywh)}
+    # Change label_coordinates to a list to maintain order
+    label_coordinates = [v.tolist() for v in xywh]  # Convert each tensor to a list
     return annotated_frame, label_coordinates
 
 
